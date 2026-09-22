@@ -1,0 +1,4 @@
+<?php
+namespace App\Dto;
+use Symfony\Component\Validator\Constraints as Assert;
+class CreateUtilisateurDto { #[Assert\NotBlank] #[Assert\Length(max:100)] public ?string $nom=null; #[Assert\NotBlank] #[Assert\Length(max:100)] public ?string $prenom=null; #[Assert\NotBlank] #[Assert\Email] #[Assert\Length(max:180)] public ?string $email=null; #[Assert\NotBlank] #[Assert\Length(min:6,max:255)] public ?string $password=null; #[Assert\Length(max:20)] public ?string $telephone=null; #[Assert\Length(max:255)] public ?string $adresse=null; #[Assert\NotBlank] public ?string $role=null; public static function fromRequest(array $data): self { $d=new self(); foreach($data as $k=>$v) if(property_exists($d,$k)) $d->$k=$v; return $d; } }

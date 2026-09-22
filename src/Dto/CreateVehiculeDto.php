@@ -1,0 +1,4 @@
+<?php
+namespace App\Dto;
+use Symfony\Component\Validator\Constraints as Assert;
+class CreateVehiculeDto { #[Assert\NotBlank] #[Assert\Length(max:100)] public ?string $marque=null; #[Assert\NotBlank] #[Assert\Length(max:100)] public ?string $modele=null; #[Assert\NotNull] #[Assert\Positive] public ?int $annee=null; #[Assert\NotBlank] #[Assert\Length(max:20)] public ?string $immatriculation=null; #[Assert\Length(max:50)] public ?string $vin=null; #[Assert\NotNull] #[Assert\PositiveOrZero] public ?int $kilometrage=null; #[Assert\Length(max:50)] public ?string $couleur=null; #[Assert\NotNull] #[Assert\Positive] public ?int $proprietaireId=null; public static function fromRequest(array $data): self { $d=new self(); foreach($data as $k=>$v) if(property_exists($d,$k)) $d->$k=$v; return $d; } }
