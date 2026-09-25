@@ -8,9 +8,11 @@ use App\Enum\UtilisateurRole;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -25,6 +27,8 @@ class UtilisateurController extends AbstractApiController
         private ValidatorInterface $validator,
         private UserPasswordHasherInterface $hasher,
         private Security $security,
+        #[Autowire(service: 'limiter.registration_attempts')]
+        private RateLimiterFactory $registrationLimiter,
     ) {
     }
 
@@ -48,6 +52,11 @@ class UtilisateurController extends AbstractApiController
     #[Route('', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
+        $limiter = $this->registrationLimiter->create($request->getClientIp());
+        if (!$limiter->consume(1)->isAccepted()) {
+            return new JsonResponse(['error' => 'Trop de tentatives d\'inscription, réessayez plus tard.'], 429);
+        }
+
         $dto = CreateUtilisateurDto::fromRequest($this->data($request));
         if ($r = $this->validateDto($dto, $this->validator)) {
             return $r;
