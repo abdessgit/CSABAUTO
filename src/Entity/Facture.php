@@ -14,15 +14,15 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\UniqueConstraint(name: 'UNIQ_FACTURE_NUMERO', fields: ['numeroFacture'])]
 class Facture
 {
-    #[ORM\Id] #[ORM\GeneratedValue] #[ORM\Column]     #[Groups(['facture:read'])]
+    #[ORM\Id] #[ORM\GeneratedValue] #[ORM\Column]     #[Groups(['facture:read', 'intervention:read'])]
 private ?int $id = null;
-    #[ORM\Column(length: 50)]     #[Groups(['facture:read'])]
+    #[ORM\Column(length: 50)]     #[Groups(['facture:read', 'intervention:read'])]
 private ?string $numeroFacture = null;
-    #[ORM\Column(type: 'date_immutable')]     #[Groups(['facture:read'])]
+    #[ORM\Column(type: 'date_immutable')]     #[Groups(['facture:read', 'intervention:read'])]
 private ?\DateTimeImmutable $dateEmission = null;
-    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]     #[Groups(['facture:read'])]
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]     #[Groups(['facture:read', 'intervention:read'])]
 private ?string $montantTotal = null;
-    #[ORM\Column(length: 20, enumType: FactureStatut::class)]     #[Groups(['facture:read'])]
+    #[ORM\Column(length: 20, enumType: FactureStatut::class)]     #[Groups(['facture:read', 'intervention:read'])]
 private ?FactureStatut $statut = null;
     #[ORM\OneToOne(inversedBy: 'facture', targetEntity: Intervention::class)] #[ORM\JoinColumn(nullable: false)]     #[Groups(['facture:read'])]
 private ?Intervention $intervention = null;

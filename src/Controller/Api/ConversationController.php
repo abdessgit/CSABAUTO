@@ -20,12 +20,135 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 #[Route('/api/conversations')]
 class ConversationController extends AbstractApiController
 {
-    public function __construct(private EntityManagerInterface $em, private SerializerInterface $serializer, private ValidatorInterface $validator, private UtilisateurRepository $users, private AnnonceRepository $annonces, private Security $security) {}
-    private function canAccess(Conversation $conversation): bool { $user = $this->security->getUser(); return $conversation->getClient() === $user || $conversation->getModerateur() === $user || $this->security->isGranted('ROLE_MODERATEUR'); }
-    #[Route('', methods: ['GET'])] public function list(ConversationRepository $repo): JsonResponse { $items = $this->security->isGranted('ROLE_MODERATEUR') ? $repo->findAll() : $repo->findBy(['client' => $this->security->getUser()]); return $this->jsonRead($items, 'conversation:read', $this->serializer); }
-    #[Route('/{id}', methods: ['GET'])] public function show(Conversation $conversation): JsonResponse { if (!$this->canAccess($conversation)) return new JsonResponse(['error' => 'Accès refusé'], 403); return $this->jsonRead($conversation, 'conversation:read', $this->serializer); }
-    #[Route('/{id}/messages', methods: ['GET'])] public function messages(Conversation $conversation): JsonResponse { if (!$this->canAccess($conversation)) return new JsonResponse(['error' => 'Accès refusé'], 403); $m = $conversation->getMessages()->toArray(); usort($m, fn($a, $b) => $a->getDateEnvoi() <=> $b->getDateEnvoi()); return $this->jsonRead($m, 'message:read', $this->serializer); }
-    #[Route('', methods: ['POST'])] public function create(Request $request): JsonResponse { $dto = CreateConversationDto::fromRequest($this->data($request)); if ($r = $this->validateDto($dto, $this->validator)) return $r; if (!$this->security->isGranted('ROLE_MODERATEUR') && $dto->clientId !== $this->security->getUser()?->getId()) return new JsonResponse(['error' => 'Accès refusé'], 403); $client = $this->users->find($dto->clientId); if (!$client) return new JsonResponse(['error' => 'Client introuvable'], 404); $mod = $dto->moderateurId ? $this->users->find($dto->moderateurId) : null; if ($dto->moderateurId && !$mod) return new JsonResponse(['error' => 'Modérateur introuvable'], 404); $ann = $dto->annonceId ? $this->annonces->find($dto->annonceId) : null; if ($dto->annonceId && !$ann) return new JsonResponse(['error' => 'Annonce introuvable'], 404); $c = (new Conversation())->setClient($client)->setModerateur($mod)->setAnnonce($ann)->setStatut(ConversationStatut::OUVERTE)->setDateCreation(new \DateTimeImmutable()); $this->em->persist($c); $this->em->flush(); return $this->jsonRead($c, 'conversation:read', $this->serializer, 201); }
-    #[Route('/{id}', methods: ['PUT'])] public function update(Conversation $conversation, Request $request): JsonResponse { if (!$this->canAccess($conversation)) return new JsonResponse(['error' => 'Accès refusé'], 403); $dto = CreateConversationDto::fromRequest($this->data($request)); if ($r = $this->validateDto($dto, $this->validator)) return $r; $client = $this->users->find($dto->clientId); if (!$client) return new JsonResponse(['error' => 'Client introuvable'], 404); $conversation->setClient($client); $this->em->flush(); return $this->jsonRead($conversation, 'conversation:read', $this->serializer); }
-    #[Route('/{id}', methods: ['DELETE'])] #[IsGranted('ROLE_MODERATEUR')] public function delete(Conversation $conversation): JsonResponse { $this->em->remove($conversation); $this->em->flush(); return new JsonResponse(null, 204); }
+    public function __construct(
+        private EntityManagerInterface $em,
+        private SerializerInterface $serializer,
+        private ValidatorInterface $validator,
+        private UtilisateurRepository $users,
+        private AnnonceRepository $annonces,
+        private Security $security
+    ) {}
+
+    private function canAccess(Conversation $conversation): bool
+    {
+        $user = $this->security->getUser();
+        return $conversation->getClient() === $user
+            || $conversation->getModerateur() === $user
+            || $this->security->isGranted('ROLE_MODERATEUR');
+    }
+
+    #[Route('', methods: ['GET'])]
+    public function list(ConversationRepository $repo): JsonResponse
+    {
+        $items = $this->security->isGranted('ROLE_MODERATEUR')
+            ? $repo->findAll()
+            : $repo->findBy(['client' => $this->security->getUser()]);
+
+        return $this->jsonRead($items, 'conversation:read', $this->serializer);
+    }
+
+    #[Route('/{id}', methods: ['GET'])]
+    public function show(Conversation $conversation): JsonResponse
+    {
+        if (!$this->canAccess($conversation)) {
+            return new JsonResponse(['error' => 'Accès refusé'], 403);
+        }
+        return $this->jsonRead($conversation, 'conversation:read', $this->serializer);
+    }
+
+    #[Route('/{id}/messages', methods: ['GET'])]
+    public function messages(Conversation $conversation): JsonResponse
+    {
+        if (!$this->canAccess($conversation)) {
+            return new JsonResponse(['error' => 'Accès refusé'], 403);
+        }
+        $m = $conversation->getMessages()->toArray();
+        usort($m, fn($a, $b) => $a->getDateEnvoi() <=> $b->getDateEnvoi());
+        return $this->jsonRead($m, 'message:read', $this->serializer);
+    }
+
+    #[Route('', methods: ['POST'])]
+    public function create(Request $request): JsonResponse
+    {
+        $data = $this->data($request);
+        $currentUser = $this->security->getUser();
+
+        // Si l'utilisateur est un client (ou si non renseigné), on force automatiquement son propre ID
+        if (!$this->security->isGranted('ROLE_MODERATEUR')) {
+            $data['clientId'] = $currentUser?->getId();
+            $data['moderateurId'] = null;
+        } elseif (empty($data['clientId']) && $currentUser) {
+            $data['clientId'] = $currentUser->getId();
+        }
+
+        $dto = CreateConversationDto::fromRequest($data);
+        if ($r = $this->validateDto($dto, $this->validator)) {
+            return $r;
+        }
+
+        if (!$this->security->isGranted('ROLE_MODERATEUR') && $dto->clientId !== $currentUser?->getId()) {
+            return new JsonResponse(['error' => 'Accès refusé'], 403);
+        }
+
+        $client = $this->users->find($dto->clientId);
+        if (!$client) {
+            return new JsonResponse(['error' => 'Client introuvable'], 404);
+        }
+
+        $mod = $dto->moderateurId ? $this->users->find($dto->moderateurId) : null;
+        if ($dto->moderateurId && !$mod) {
+            return new JsonResponse(['error' => 'Modérateur introuvable'], 404);
+        }
+
+        $ann = $dto->annonceId ? $this->annonces->find($dto->annonceId) : null;
+        if ($dto->annonceId && !$ann) {
+            return new JsonResponse(['error' => 'Annonce introuvable'], 404);
+        }
+
+        $c = (new Conversation())
+            ->setObjet($dto->objet)
+            ->setClient($client)
+            ->setModerateur($mod)
+            ->setAnnonce($ann)
+            ->setStatut(ConversationStatut::OUVERTE)
+            ->setDateCreation(new \DateTimeImmutable());
+
+        $this->em->persist($c);
+        $this->em->flush();
+
+        return $this->jsonRead($c, 'conversation:read', $this->serializer, 201);
+    }
+
+    #[Route('/{id}', methods: ['PUT'])]
+    public function update(Conversation $conversation, Request $request): JsonResponse
+    {
+        if (!$this->canAccess($conversation)) {
+            return new JsonResponse(['error' => 'Accès refusé'], 403);
+        }
+
+        $data = $this->data($request);
+        // Sécurité : ignorer tout clientId du payload, la conversation reste associée à son client d'origine
+        $data['clientId'] = $conversation->getClient()?->getId();
+
+        $dto = CreateConversationDto::fromRequest($data);
+        if ($r = $this->validateDto($dto, $this->validator)) {
+            return $r;
+        }
+
+        if ($dto->objet) {
+            $conversation->setObjet($dto->objet);
+        }
+
+        $this->em->flush();
+        return $this->jsonRead($conversation, 'conversation:read', $this->serializer);
+    }
+
+    #[Route('/{id}', methods: ['DELETE'])]
+    #[IsGranted('ROLE_MODERATEUR')]
+    public function delete(Conversation $conversation): JsonResponse
+    {
+        $this->em->remove($conversation);
+        $this->em->flush();
+        return new JsonResponse(null, 204);
+    }
 }

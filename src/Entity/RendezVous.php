@@ -14,17 +14,17 @@ class RendezVous
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-        #[Groups(['rendezvous:read'])]
+        #[Groups(['rendezvous:read', 'rendezvous:summary'])]
 private ?int $id = null;
-    #[ORM\Column]     #[Groups(['rendezvous:read'])]
+    #[ORM\Column]     #[Groups(['rendezvous:read', 'rendezvous:summary'])]
 private ?\DateTimeImmutable $dateHeure = null;
-    #[ORM\Column(length: 255, nullable: true)]     #[Groups(['rendezvous:read'])]
+    #[ORM\Column(length: 255, nullable: true)]     #[Groups(['rendezvous:read', 'rendezvous:summary'])]
 private ?string $motif = null;
-    #[ORM\Column(length: 20, enumType: RendezVousStatut::class)]     #[Groups(['rendezvous:read'])]
+    #[ORM\Column(length: 20, enumType: RendezVousStatut::class)]     #[Groups(['rendezvous:read', 'rendezvous:summary'])]
 private ?RendezVousStatut $statut = null;
     #[ORM\Column]     #[Groups(['rendezvous:read'])]
 private ?\DateTimeImmutable $dateCreation = null;
-    #[ORM\ManyToOne(inversedBy: 'rendezVousClient')] #[ORM\JoinColumn(nullable: false)]     #[Groups(['rendezvous:read'])]
+    #[ORM\ManyToOne(inversedBy: 'rendezVousClient')] #[ORM\JoinColumn(nullable: false)]     #[Groups(['rendezvous:read', 'rendezvous:summary'])]
 private ?Utilisateur $client = null;
     #[ORM\ManyToOne(inversedBy: 'rendezVous')] #[ORM\JoinColumn(nullable: false)]     #[Groups(['rendezvous:read'])]
 private ?Vehicule $vehicule = null;

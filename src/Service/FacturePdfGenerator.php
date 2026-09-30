@@ -23,6 +23,8 @@ class FacturePdfGenerator
         $vehicule = $intervention->getVehicule();
         $client = $vehicule->getProprietaire();
 
+        $esc = static fn(?string $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+
         $lignesHtml = '';
         foreach ($facture->getLignesFacture() as $ligne) {
             $lignesHtml .= sprintf(
@@ -32,12 +34,30 @@ class FacturePdfGenerator
                     <td style="text-align:right;">%s €</td>
                     <td style="text-align:right;">%s €</td>
                 </tr>',
-                htmlspecialchars($ligne->getDescription()),
+                $esc($ligne->getDescription()),
                 $ligne->getQuantite(),
                 number_format((float) $ligne->getPrixUnitaire(), 2, ',', ' '),
                 number_format((float) $ligne->getSousTotal(), 2, ',', ' ')
             );
         }
+
+        $companyNameEsc = $esc($this->companyName);
+        $companyAddressEsc = nl2br($esc($this->companyAddress));
+        $companyPhoneEsc = $esc($this->companyPhone);
+        $companyEmailEsc = $esc($this->companyEmail);
+        $companySiretEsc = $esc($this->companySiret);
+
+        $numeroFactureEsc = $esc($facture->getNumeroFacture());
+        $dateEmissionEsc = $esc($facture->getDateEmission()->format('d/m/Y'));
+
+        $clientNomCompletEsc = $esc(trim(($client->getPrenom() ?? '') . ' ' . ($client->getNom() ?? '')));
+        $clientEmailEsc = $esc($client->getEmail());
+        $clientAdresseEsc = nl2br($esc($client->getAdresse() ?? ''));
+
+        $vehiculeMarqueEsc = $esc($vehicule->getMarque());
+        $vehiculeModeleEsc = $esc($vehicule->getModele());
+        $vehiculeImmatEsc = $esc($vehicule->getImmatriculation());
+        $totalFormatted = $this->formatMontant($facture->getMontantTotal());
 
         $html = <<<HTML
         <html>
@@ -60,30 +80,30 @@ class FacturePdfGenerator
         <body>
             <div class="header">
                 <div>
-                    <div class="company-name">{$this->companyName}</div>
+                    <div class="company-name">{$companyNameEsc}</div>
                     <div class="company-info">
-                        {$this->companyAddress}<br>
-                        Tél : {$this->companyPhone}<br>
-                        {$this->companyEmail}<br>
-                        SIRET : {$this->companySiret}
+                        {$companyAddressEsc}<br>
+                        Tél : {$companyPhoneEsc}<br>
+                        {$companyEmailEsc}<br>
+                        SIRET : {$companySiretEsc}
                     </div>
                 </div>
                 <div style="text-align:right;">
                     <div class="invoice-title">FACTURE</div>
-                    <div>N° {$facture->getNumeroFacture()}</div>
-                    <div>Date : {$facture->getDateEmission()->format('d/m/Y')}</div>
+                    <div>N° {$numeroFactureEsc}</div>
+                    <div>Date : {$dateEmissionEsc}</div>
                 </div>
             </div>
 
             <div class="client-info">
                 <strong>Facturé à :</strong><br>
-                {$client->getPrenom()} {$client->getNom()}<br>
-                {$client->getEmail()}<br>
-                {$client->getAdresse()}
+                {$clientNomCompletEsc}<br>
+                {$clientEmailEsc}<br>
+                {$clientAdresseEsc}
             </div>
 
             <div>
-                <strong>Véhicule :</strong> {$vehicule->getMarque()} {$vehicule->getModele()} — {$vehicule->getImmatriculation()}
+                <strong>Véhicule :</strong> {$vehiculeMarqueEsc} {$vehiculeModeleEsc} — {$vehiculeImmatEsc}
             </div>
 
             <table>
@@ -99,13 +119,13 @@ class FacturePdfGenerator
                     {$lignesHtml}
                     <tr class="total-row">
                         <td colspan="3" style="text-align:right;">TOTAL TTC</td>
-                        <td style="text-align:right;">{$this->formatMontant($facture->getMontantTotal())} €</td>
+                        <td style="text-align:right;">{$totalFormatted} €</td>
                     </tr>
                 </tbody>
             </table>
 
             <div class="footer">
-                {$this->companyName} — {$this->companyAddress} — SIRET {$this->companySiret}
+                {$companyNameEsc} — {$companyAddressEsc} — SIRET {$companySiretEsc}
             </div>
         </body>
         </html>

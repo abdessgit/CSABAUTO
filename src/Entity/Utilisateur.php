@@ -53,6 +53,17 @@ private array $roles = [];
         #[Groups(['utilisateur:read'])]
 private ?\DateTimeImmutable $dateCreation = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    #[Groups(['utilisateur:read', 'utilisateur:summary'])]
+    private bool $isVerified = false;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[Groups(['utilisateur:read'])]
+    private ?\DateTimeImmutable $emailVerifiedAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $passwordChangedAt = null;
+
     /** @var Collection<int, Vehicule> */
     #[ORM\OneToMany(mappedBy: 'proprietaire', targetEntity: Vehicule::class)]
     private Collection $vehicules;
@@ -125,4 +136,10 @@ private ?\DateTimeImmutable $dateCreation = null;
     public function getMessages(): Collection { return $this->messages; }
     public function addMessage(Message $message): static { if (!$this->messages->contains($message)) { $this->messages->add($message); $message->setExpediteur($this); } return $this; }
     public function removeMessage(Message $message): static { if ($this->messages->removeElement($message) && $message->getExpediteur() === $this) { $message->setExpediteur(null); } return $this; }
+    public function isVerified(): bool { return $this->isVerified; }
+    public function setIsVerified(bool $isVerified): static { $this->isVerified = $isVerified; return $this; }
+    public function getEmailVerifiedAt(): ?\DateTimeImmutable { return $this->emailVerifiedAt; }
+    public function setEmailVerifiedAt(?\DateTimeImmutable $emailVerifiedAt): static { $this->emailVerifiedAt = $emailVerifiedAt; return $this; }
+    public function getPasswordChangedAt(): ?\DateTimeImmutable { return $this->passwordChangedAt; }
+    public function setPasswordChangedAt(?\DateTimeImmutable $passwordChangedAt): static { $this->passwordChangedAt = $passwordChangedAt; return $this; }
 }

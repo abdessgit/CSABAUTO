@@ -10,15 +10,15 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Table(name: 'intervention_service')]
 class InterventionService
 {
-    #[ORM\Id] #[ORM\GeneratedValue] #[ORM\Column]     #[Groups(['interventionservice:read'])]
+    #[ORM\Id] #[ORM\GeneratedValue] #[ORM\Column]     #[Groups(['interventionservice:read', 'intervention:read'])]
 private ?int $id = null;
-    #[ORM\Column]     #[Groups(['interventionservice:read'])]
+    #[ORM\Column]     #[Groups(['interventionservice:read', 'intervention:read'])]
 private ?int $quantite = null;
-    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]     #[Groups(['interventionservice:read'])]
+    #[ORM\Column(type: 'decimal', precision: 10, scale: 2)]     #[Groups(['interventionservice:read', 'intervention:read'])]
 private ?string $prixApplique = null;
     #[ORM\ManyToOne(inversedBy: 'interventionServices')] #[ORM\JoinColumn(nullable: false)]     #[Groups(['interventionservice:read'])]
 private ?Intervention $intervention = null;
-    #[ORM\ManyToOne(inversedBy: 'interventionServices')] #[ORM\JoinColumn(nullable: false)]     #[Groups(['interventionservice:read'])]
+    #[ORM\ManyToOne(inversedBy: 'interventionServices')] #[ORM\JoinColumn(nullable: false)]     #[Groups(['interventionservice:read', 'intervention:read'])]
 private ?Service $service = null;
     public function getId(): ?int { return $this->id; }
     public function getQuantite(): ?int { return $this->quantite; } public function setQuantite(int $quantite): static { $this->quantite = $quantite; return $this; }

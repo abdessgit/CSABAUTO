@@ -34,7 +34,7 @@ private ?int $kilometrage = null;
 private ?string $couleur = null;
     #[ORM\Column]     #[Groups(['vehicule:read'])]
 private ?\DateTimeImmutable $dateAjout = null;
-    #[ORM\ManyToOne(inversedBy: 'vehicules')] #[ORM\JoinColumn(nullable: false)]     #[Groups(['vehicule:read'])]
+    #[ORM\ManyToOne(inversedBy: 'vehicules')] #[ORM\JoinColumn(nullable: false)]     #[Groups(['vehicule:read', 'vehicule:summary'])]
 private ?Utilisateur $proprietaire = null;
     /** @var Collection<int, Annonce> */ #[ORM\OneToMany(mappedBy: 'vehicule', targetEntity: Annonce::class)] private Collection $annonces;
     /** @var Collection<int, RendezVous> */ #[ORM\OneToMany(mappedBy: 'vehicule', targetEntity: RendezVous::class)] private Collection $rendezVous;

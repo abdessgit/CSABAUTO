@@ -7,7 +7,9 @@ use App\Enum\FactureStatut;
 use App\Repository\FactureRepository;
 use App\Service\FacturePdfGenerator;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,6 +28,9 @@ class FactureController extends AbstractApiController
         private Security $security,
         private FacturePdfGenerator $pdfGenerator,
         private MailerInterface $mailer,
+        private LoggerInterface $logger,
+        #[Autowire('%company.email%')]
+        private string $companyEmail,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -102,22 +107,27 @@ class FactureController extends AbstractApiController
 
     #[Route('/{id}/envoyer-email', methods: ['POST'])]
     #[IsGranted('ROLE_MODERATEUR')]
-    public function envoyerEmail(Facture $facture, FacturePdfGenerator $pdfGenerator, MailerInterface $mailer): JsonResponse
+    public function envoyerEmail(Facture $facture): JsonResponse
     {
         $client = $facture->getIntervention()->getVehicule()->getProprietaire();
-        $pdfContent = $pdfGenerator->generate($facture);
+        $pdfContent = $this->pdfGenerator->generate($facture);
 
         $email = (new Email())
-            ->from('contact@csabauto.com')
+            ->from($this->companyEmail)
             ->to($client->getEmail())
             ->subject('Votre facture ' . $facture->getNumeroFacture() . ' - CSAB AUTO')
             ->text('Bonjour ' . $client->getPrenom() . ",\n\nVeuillez trouver ci-joint votre facture.\n\nCordialement,\nCSAB AUTO")
             ->attach($pdfContent, $facture->getNumeroFacture() . '.pdf', 'application/pdf');
 
         try {
-            $mailer->send($email);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'Échec de l\'envoi de l\'email : ' . $e->getMessage()], 500);
+            $this->mailer->send($email);
+        } catch (\Throwable $e) {
+            $this->logger->error('Échec de l\'envoi de la facture par e-mail : ' . $e->getMessage(), [
+                'facture_id' => $facture->getId(),
+                'client_email' => $client->getEmail(),
+                'exception' => $e,
+            ]);
+            return new JsonResponse(['error' => 'Erreur lors de l\'envoi de l\'e-mail.'], 500);
         }
 
         return new JsonResponse(['message' => 'Facture envoyée par email avec succès.']);

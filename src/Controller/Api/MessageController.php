@@ -12,6 +12,8 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -26,6 +28,8 @@ class MessageController extends AbstractApiController
         private ConversationRepository $conversations,
         private UtilisateurRepository $users,
         private Security $security,
+        #[Autowire(service: 'limiter.message_attempts')]
+        private RateLimiterFactory $messageLimiter,
     ) {}
 
     private function canAccessConversation(Conversation $conversation): bool
@@ -39,12 +43,27 @@ class MessageController extends AbstractApiController
     #[Route('', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        $dto = CreateMessageDto::fromRequest($this->data($request));
+        $currentUser = $this->security->getUser();
+        $rateLimitKey = $currentUser ? (string) $currentUser->getUserIdentifier() : ($request->getClientIp() ?? 'unknown');
+        $limiter = $this->messageLimiter->create($rateLimitKey);
+        if (!$limiter->consume(1)->isAccepted()) {
+            return new JsonResponse(['error' => 'Trop de messages envoyés, veuillez patienter avant de réessayer.'], 429);
+        }
+
+        $data = $this->data($request);
+
+        if ($currentUser) {
+            if (!$this->security->isGranted('ROLE_MODERATEUR') || empty($data['expediteurId'])) {
+                $data['expediteurId'] = $currentUser->getId();
+            }
+        }
+
+        $dto = CreateMessageDto::fromRequest($data);
         if ($r = $this->validateDto($dto, $this->validator)) {
             return $r;
         }
 
-        if ($dto->expediteurId !== $this->security->getUser()?->getId()) {
+        if (!$this->security->isGranted('ROLE_MODERATEUR') && $dto->expediteurId !== $currentUser?->getId()) {
             return new JsonResponse(['error' => 'Accès refusé'], 403);
         }
 
@@ -58,6 +77,9 @@ class MessageController extends AbstractApiController
         }
 
         $expediteur = $this->users->find($dto->expediteurId);
+        if (!$expediteur) {
+            return new JsonResponse(['error' => 'Expéditeur introuvable'], 404);
+        }
 
         $message = (new Message())
             ->setContenu($dto->contenu)

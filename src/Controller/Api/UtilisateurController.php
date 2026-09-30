@@ -6,6 +6,8 @@ use App\Dto\CreateUtilisateurDto;
 use App\Entity\Utilisateur;
 use App\Enum\UtilisateurRole;
 use App\Repository\UtilisateurRepository;
+use App\Service\EmailVerifier;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -27,6 +29,7 @@ class UtilisateurController extends AbstractApiController
         private ValidatorInterface $validator,
         private UserPasswordHasherInterface $hasher,
         private Security $security,
+        private EmailVerifier $emailVerifier,
         #[Autowire(service: 'limiter.registration_attempts')]
         private RateLimiterFactory $registrationLimiter,
     ) {
@@ -49,6 +52,10 @@ class UtilisateurController extends AbstractApiController
         return $this->jsonRead($utilisateur, 'utilisateur:read', $this->serializer);
     }
 
+    /**
+     * Inscription publique : crée exclusivement un compte ROLE_CLIENT.
+     * Tout paramètre "role" présent dans le payload est strictement ignoré.
+     */
     #[Route('', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -57,14 +64,64 @@ class UtilisateurController extends AbstractApiController
             return new JsonResponse(['error' => 'Trop de tentatives d\'inscription, réessayez plus tard.'], 429);
         }
 
-        $dto = CreateUtilisateurDto::fromRequest($this->data($request));
+        $data = $this->data($request);
+        // Sécurité critique : suppression de tout champ "role" transmis par le client
+        unset($data['role']);
+
+        $dto = CreateUtilisateurDto::fromRequest($data);
         if ($r = $this->validateDto($dto, $this->validator)) {
             return $r;
         }
 
-        $role = UtilisateurRole::tryFrom($dto->role);
+        $u = (new Utilisateur())
+            ->setNom($dto->nom)
+            ->setPrenom($dto->prenom)
+            ->setEmail($dto->email)
+            ->setTelephone($dto->telephone)
+            ->setAdresse($dto->adresse)
+            ->setRoleEnums([UtilisateurRole::CLIENT])
+            ->setDateCreation(new \DateTimeImmutable())
+            ->setIsVerified(false);
+        $u->setPassword($this->hasher->hashPassword($u, $dto->password));
+
+        try {
+            $this->em->persist($u);
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException) {
+            return new JsonResponse([
+                'error' => 'Cette adresse e-mail est déjà associée à un compte.',
+                'errors' => ['email' => 'Cette adresse e-mail est déjà associée à un compte.'],
+            ], 409);
+        }
+
+        // Envoi de l'e-mail de confirmation avec jeton sécurisé
+        $this->emailVerifier->sendVerificationEmail($u);
+
+        return new JsonResponse([
+            'message' => 'Votre compte a été créé avec succès. Un e-mail de confirmation vient de vous être envoyé pour activer votre compte.',
+            'email' => $u->getEmail(),
+            'id' => $u->getId(),
+        ], 201);
+    }
+
+    /**
+     * Création interne par un administrateur authentifié.
+     * Permet la création directe d'un compte avec le rôle de son choix (MODERATEUR, ADMIN, CLIENT).
+     */
+    #[Route('/admin', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function createByAdmin(Request $request): JsonResponse
+    {
+        $data = $this->data($request);
+        $dto = CreateUtilisateurDto::fromRequest($data);
+        if ($r = $this->validateDto($dto, $this->validator)) {
+            return $r;
+        }
+
+        $roleValue = $dto->role ? strtoupper(trim($dto->role)) : UtilisateurRole::MODERATEUR->value;
+        $role = UtilisateurRole::tryFrom($roleValue);
         if (!$role) {
-            return new JsonResponse(['error' => 'Rôle invalide'], 400);
+            return new JsonResponse(['error' => 'Rôle invalide (valeurs acceptées : CLIENT, MODERATEUR, ADMIN).'], 400);
         }
 
         $u = (new Utilisateur())
@@ -74,11 +131,20 @@ class UtilisateurController extends AbstractApiController
             ->setTelephone($dto->telephone)
             ->setAdresse($dto->adresse)
             ->setRoleEnums([$role])
-            ->setDateCreation(new \DateTimeImmutable());
+            ->setDateCreation(new \DateTimeImmutable())
+            ->setIsVerified(true)
+            ->setEmailVerifiedAt(new \DateTimeImmutable());
         $u->setPassword($this->hasher->hashPassword($u, $dto->password));
 
-        $this->em->persist($u);
-        $this->em->flush();
+        try {
+            $this->em->persist($u);
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException) {
+            return new JsonResponse([
+                'error' => 'Cette adresse e-mail est déjà associée à un compte.',
+                'errors' => ['email' => 'Cette adresse e-mail est déjà associée à un compte.'],
+            ], 409);
+        }
 
         return $this->jsonRead($u, 'utilisateur:read', $this->serializer, 201);
     }
@@ -91,6 +157,7 @@ class UtilisateurController extends AbstractApiController
         }
 
         $data = $this->data($request);
+        // Seul un administrateur peut modifier le rôle d'un compte
         if (!$this->security->isGranted('ROLE_ADMIN')) {
             $data['role'] = ($utilisateur->getRoleEnums()[0] ?? UtilisateurRole::CLIENT)->value;
         }
@@ -100,7 +167,7 @@ class UtilisateurController extends AbstractApiController
             return $r;
         }
 
-        $role = UtilisateurRole::tryFrom($dto->role);
+        $role = UtilisateurRole::tryFrom($dto->role ?? '');
         if (!$role) {
             return new JsonResponse(['error' => 'Rôle invalide'], 400);
         }
@@ -113,7 +180,15 @@ class UtilisateurController extends AbstractApiController
             ->setAdresse($dto->adresse)
             ->setRoleEnums([$role])
             ->setPassword($this->hasher->hashPassword($utilisateur, $dto->password));
-        $this->em->flush();
+
+        try {
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException) {
+            return new JsonResponse([
+                'error' => 'Cette adresse e-mail est déjà associée à un compte.',
+                'errors' => ['email' => 'Cette adresse e-mail est déjà associée à un compte.'],
+            ], 409);
+        }
 
         return $this->jsonRead($utilisateur, 'utilisateur:read', $this->serializer);
     }

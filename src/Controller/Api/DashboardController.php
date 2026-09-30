@@ -35,7 +35,7 @@ class DashboardController extends AbstractApiController
         }
 
         $totalVehicules = $vehiculeRepo->count([]);
-        $totalAnnoncesEnVente = $annonceRepo->count(['statut' => AnnonceStatut::EN_VENTE]);
+        $totalAnnoncesEnVente = $annonceRepo->count(['statut' => AnnonceStatut::PUBLIEE]) + $annonceRepo->count(['statut' => AnnonceStatut::EN_VENTE]);
         $facturesEnAttente = $factureRepo->count(['statut' => FactureStatut::EN_ATTENTE]);
 
         $startOfMonth = new \DateTimeImmutable('first day of this month 00:00:00');

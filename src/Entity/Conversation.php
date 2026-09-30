@@ -15,6 +15,10 @@ class Conversation
 {
     #[ORM\Id] #[ORM\GeneratedValue] #[ORM\Column]     #[Groups(['conversation:read'])]
 private ?int $id = null;
+    #[ORM\Column(length: 120, nullable: true)]
+    #[Groups(['conversation:read'])]
+    private ?string $objet = null;
+
     #[ORM\Column]     #[Groups(['conversation:read'])]
 private ?\DateTimeImmutable $dateCreation = null;
     #[ORM\Column(length: 20, enumType: ConversationStatut::class)]     #[Groups(['conversation:read'])]
@@ -29,6 +33,8 @@ private ?Annonce $annonce = null;
     #[ORM\OneToMany(mappedBy: 'conversation', targetEntity: Message::class, orphanRemoval: true)] private Collection $messages;
     public function __construct() { $this->messages = new ArrayCollection(); }
     public function getId(): ?int { return $this->id; }
+    public function getObjet(): ?string { return $this->objet; }
+    public function setObjet(?string $objet): static { $this->objet = $objet; return $this; }
     public function getDateCreation(): ?\DateTimeImmutable { return $this->dateCreation; } public function setDateCreation(\DateTimeImmutable $dateCreation): static { $this->dateCreation = $dateCreation; return $this; }
     public function getStatut(): ?ConversationStatut { return $this->statut; } public function setStatut(ConversationStatut $statut): static { $this->statut = $statut; return $this; }
     public function getClient(): ?Utilisateur { return $this->client; } public function setClient(?Utilisateur $client): static { $this->client = $client; return $this; }

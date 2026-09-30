@@ -8,3 +8,20 @@ framework:
             policy: 'sliding_window'
             limit: 3
             interval: '1 hour'
+        resend_verification_attempts:
+            policy: 'sliding_window'
+            limit: 3
+            interval: '1 hour'
+        forgot_password_attempts:
+            policy: 'sliding_window'
+            limit: 3
+            interval: '1 hour'
+        message_attempts:
+            policy: 'sliding_window'
+            limit: 20
+            interval: '5 minutes'
+        rendez_vous_attempts:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 hour'
+

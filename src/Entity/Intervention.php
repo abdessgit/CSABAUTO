@@ -30,7 +30,8 @@ private ?Vehicule $vehicule = null;
     #[ORM\OneToOne(inversedBy: 'intervention', targetEntity: RendezVous::class)]     #[Groups(['intervention:read'])]
 private ?RendezVous $rendezVous = null;
     /** @var Collection<int, InterventionService> */
-    #[ORM\OneToMany(mappedBy: 'intervention', targetEntity: InterventionService::class, orphanRemoval: true)] private Collection $interventionServices;
+    #[ORM\OneToMany(mappedBy: 'intervention', targetEntity: InterventionService::class, orphanRemoval: true)]     #[Groups(['intervention:read'])]
+private Collection $interventionServices;
     #[ORM\OneToOne(mappedBy: 'intervention', targetEntity: Facture::class)]     #[Groups(['intervention:read'])]
 private ?Facture $facture = null;
     public function __construct() { $this->interventionServices = new ArrayCollection(); }
@@ -39,6 +40,9 @@ private ?Facture $facture = null;
     public function getDescription(): ?string { return $this->description; } public function setDescription(?string $description): static { $this->description = $description; return $this; }
     public function getKilometrageReleve(): ?int { return $this->kilometrageReleve; } public function setKilometrageReleve(?int $kilometrageReleve): static { $this->kilometrageReleve = $kilometrageReleve; return $this; }
     public function getCoutTotal(): ?string { return $this->coutTotal; } public function setCoutTotal(string $coutTotal): static { $this->coutTotal = $coutTotal; return $this; }
+    #[Groups(['intervention:read'])]
+    public function getMontant(): ?string { return $this->coutTotal; }
+    public function setMontant(?string $montant): static { $this->coutTotal = $montant !== null ? number_format((float) $montant, 2, '.', '') : null; return $this; }
     public function getStatut(): ?InterventionStatut { return $this->statut; } public function setStatut(InterventionStatut $statut): static { $this->statut = $statut; return $this; }
     public function getVehicule(): ?Vehicule { return $this->vehicule; } public function setVehicule(?Vehicule $vehicule): static { $this->vehicule = $vehicule; return $this; }
     public function getRendezVous(): ?RendezVous { return $this->rendezVous; } public function setRendezVous(?RendezVous $rendezVous): static { $this->rendezVous = $rendezVous; return $this; }

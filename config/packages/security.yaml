@@ -15,13 +15,14 @@ security:
 
     firewalls:
         dev:
-            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            pattern: ^/(_(profiler|wdt)|css|images|js|uploads)/
             security: false
 
         login:
             pattern: ^/api/login_check$
             stateless: true
             provider: app_user_provider
+            user_checker: App\Security\UserChecker
             json_login:
                 check_path: /api/login_check
                 username_path: email
@@ -33,10 +34,32 @@ security:
             pattern: ^/api
             stateless: true
             provider: app_user_provider
+            user_checker: App\Security\UserChecker
             jwt: ~
 
-    access_control:
-        - { path: ^/api/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api/annonces, methods: [GET], roles: PUBLIC_ACCESS }
-        - { path: ^/api/utilisateurs$, methods: [POST], roles: PUBLIC_ACCESS }
-        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+when@dev:
+    security:
+        access_control:
+            - { path: ^/api/login, roles: PUBLIC_ACCESS }
+            - { path: ^/api/auth/, roles: PUBLIC_ACCESS }
+            - { path: ^/api/annonces/publiques, methods: [GET], roles: PUBLIC_ACCESS }
+            - { path: ^/api/utilisateurs$, methods: [POST], roles: PUBLIC_ACCESS }
+            - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+
+when@test:
+    security:
+        access_control:
+            - { path: ^/api/login, roles: PUBLIC_ACCESS }
+            - { path: ^/api/auth/, roles: PUBLIC_ACCESS }
+            - { path: ^/api/annonces/publiques, methods: [GET], roles: PUBLIC_ACCESS }
+            - { path: ^/api/utilisateurs$, methods: [POST], roles: PUBLIC_ACCESS }
+            - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+
+when@prod:
+    security:
+        access_control:
+            - { path: ^/api/login, roles: PUBLIC_ACCESS, requires_channel: https }
+            - { path: ^/api/auth/, roles: PUBLIC_ACCESS, requires_channel: https }
+            - { path: ^/api/annonces/publiques, methods: [GET], roles: PUBLIC_ACCESS, requires_channel: https }
+            - { path: ^/api/utilisateurs$, methods: [POST], roles: PUBLIC_ACCESS, requires_channel: https }
+            - { path: ^/api, roles: IS_AUTHENTICATED_FULLY, requires_channel: https }

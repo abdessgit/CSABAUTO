@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Dto\CreateInterventionDto;
+use App\Dto\UpdateInterventionStatutDto;
 use App\Entity\Facture;
 use App\Entity\Intervention;
 use App\Entity\InterventionService;
@@ -78,6 +79,9 @@ class InterventionController extends AbstractApiController
         if ($dto->rendezVousId && !$rendezVous) {
             return new JsonResponse(['error' => 'Rendez-vous introuvable'], 404);
         }
+        if ($rendezVous && $rendezVous->getIntervention() !== null) {
+            return new JsonResponse(['error' => 'Une intervention existe déjà pour ce rendez-vous'], 422);
+        }
 
         $intervention = (new Intervention())
             ->setDateIntervention(new \DateTimeImmutable($dto->dateIntervention))
@@ -149,6 +153,30 @@ class InterventionController extends AbstractApiController
         return new JsonResponse(null, 204);
     }
 
+    #[Route('/{id}/statut', methods: ['PATCH'])]
+    #[IsGranted('ROLE_MODERATEUR')]
+    public function statut(Intervention $intervention, Request $request): JsonResponse
+    {
+        $dto = UpdateInterventionStatutDto::fromRequest($this->data($request));
+        if ($r = $this->validateDto($dto, $this->validator)) {
+            return $r;
+        }
+
+        $s = InterventionStatut::from($dto->statut);
+        $intervention->setStatut($s);
+
+        if ($s === InterventionStatut::TERMINEE) {
+            $montantFormatted = number_format((float) $dto->montant, 2, '.', '');
+            $intervention->setCoutTotal($montantFormatted);
+        } elseif ($dto->montant !== null && is_numeric($dto->montant) && (float) $dto->montant >= 0) {
+            $montantFormatted = number_format((float) $dto->montant, 2, '.', '');
+            $intervention->setCoutTotal($montantFormatted);
+        }
+
+        $this->em->flush();
+        return $this->jsonRead($intervention, 'intervention:read', $this->serializer);
+    }
+
     #[Route('/{id}/facture', methods: ['POST'])]
     #[IsGranted('ROLE_MODERATEUR')]
     public function genererFacture(Intervention $intervention): JsonResponse
@@ -164,20 +192,33 @@ class InterventionController extends AbstractApiController
             ->setIntervention($intervention);
 
         $montantTotal = 0.0;
-        foreach ($intervention->getInterventionServices() as $is) {
-            $sousTotal = $is->getQuantite() * (float) $is->getPrixApplique();
+        if ($intervention->getInterventionServices()->count() > 0) {
+            foreach ($intervention->getInterventionServices() as $is) {
+                $sousTotal = $is->getQuantite() * (float) $is->getPrixApplique();
+                $ligne = (new LigneFacture())
+                    ->setFacture($facture)
+                    ->setDescription($is->getService()->getNom())
+                    ->setQuantite($is->getQuantite())
+                    ->setPrixUnitaire($is->getPrixApplique())
+                    ->setSousTotal((string) $sousTotal);
+
+                $this->em->persist($ligne);
+                $montantTotal += $sousTotal;
+            }
+        } else {
+            $montantVal = (float) ($intervention->getCoutTotal() ?: '0.00');
             $ligne = (new LigneFacture())
                 ->setFacture($facture)
-                ->setDescription($is->getService()->getNom())
-                ->setQuantite($is->getQuantite())
-                ->setPrixUnitaire($is->getPrixApplique())
-                ->setSousTotal((string) $sousTotal);
+                ->setDescription($intervention->getDescription() ?: 'Intervention mécanique générale')
+                ->setQuantite(1)
+                ->setPrixUnitaire(number_format($montantVal, 2, '.', ''))
+                ->setSousTotal(number_format($montantVal, 2, '.', ''));
 
             $this->em->persist($ligne);
-            $montantTotal += $sousTotal;
+            $montantTotal = $montantVal;
         }
 
-        $facture->setMontantTotal((string) $montantTotal);
+        $facture->setMontantTotal(number_format($montantTotal, 2, '.', ''));
 
         $this->em->persist($facture);
         $this->em->flush();

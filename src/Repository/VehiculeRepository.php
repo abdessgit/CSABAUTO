@@ -15,4 +15,18 @@ class VehiculeRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Vehicule::class);
     }
+
+    public function findOneByImmatriculationInsensitive(?string $immatriculation): ?Vehicule
+    {
+        if (!$immatriculation) {
+            return null;
+        }
+
+        return $this->createQueryBuilder('v')
+            ->where('UPPER(TRIM(v.immatriculation)) = :immat')
+            ->setParameter('immat', strtoupper(trim($immatriculation)))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

@@ -24,6 +24,24 @@ use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
+/**
+ * =========================================================================================
+ * ⚠️ ATTENTION - ENVIRONNEMENT DE DÉVELOPPEMENT ET DE TEST UNIQUEMENT ⚠️
+ * =========================================================================================
+ * Ce fichier contient des jeux de données fictifs et des identifiants par défaut
+ * (ex: admin@csabauto.com / Test1234!) destinés EXCLUSIVEMENT aux tests et au développement local.
+ *
+ * IL NE DOIT JAMAIS ÊTRE EXÉCUTÉ SUR LA BASE DE DONNÉES DE PRODUCTION.
+ *
+ * Si votre base de données de production a déjà été initialisée avec ces fixtures par erreur,
+ * vous DEVEZ impérativement changer les mots de passe de ces comptes ou les supprimer avant
+ * toute mise en ligne publique.
+ *
+ * Pour initialiser le premier compte administrateur en production en toute sécurité,
+ * utilisez la commande console dédiée :
+ * php bin/console app:create-user <email> <nom> <prenom> ROLE_ADMIN <mot_de_passe_robuste>
+ * =========================================================================================
+ */
 class AppFixtures extends Fixture
 {
     public function __construct(
@@ -33,6 +51,11 @@ class AppFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
+        // Garde-fou actif : interdire formellement le chargement des fixtures en production
+        if (($_SERVER['APP_ENV'] ?? $_ENV['APP_ENV'] ?? '') === 'prod') {
+            throw new \LogicException('SÉCURITÉ : Les fixtures de démonstration ne doivent JAMAIS être chargées en environnement de production !');
+        }
+
         // ===== UTILISATEURS =====
 
         $admin = $this->createUtilisateur($manager, 'Bouzaroura', 'Abdesslam', 'admin@csabauto.com', 'Test1234!', UtilisateurRole::ADMIN);
