@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouveau message reçu depuis le formulaire de contact</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5; padding: 40px 15px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);" cellspacing="0" cellpadding="0">
+                    
+                    <!-- HEADER -->
+                    <tr>
+                        <td style="background-color: #09090b; padding: 25px 40px; text-align: left;">
+                            <div style="display: inline-block;">
+                                <span style="background-color: #f5c400; color: #000000; font-size: 18px; font-weight: 900; padding: 4px 10px; border-radius: 4px; letter-spacing: 1px; display: inline-block;">CSAB</span>
+                                <strong style="color: #ffffff; font-size: 18px; font-weight: 900; letter-spacing: 2px; margin-left: 6px; display: inline-block;">AUTO</strong>
+                            </div>
+                            <span style="float: right; background-color: #27272a; color: #e4e4e7; font-size: 11px; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; font-weight: 700; margin-top: 5px;">
+                                Notification Interne
+                            </span>
+                        </td>
+                    </tr>
+
+                    <!-- CORPS -->
+                    <tr>
+                        <td style="padding: 35px 40px;">
+                            <h1 style="margin: 0 0 15px; font-size: 20px; font-weight: 800; color: #09090b;">
+                                📩 Nouveau message de contact
+                            </h1>
+
+                            <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.5; color: #52525b;">
+                                Un visiteur vient de soumettre le formulaire de contact sur le site csabauto.fr.
+                            </p>
+
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 25px; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #71717a; width: 120px; border-bottom: 1px solid #f4f4f5;">Nom :</td>
+                                    <td style="padding: 8px 12px; font-size: 14px; color: #18181b; font-weight: 600; border-bottom: 1px solid #f4f4f5;">{{ messageContact.nom }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #71717a; border-bottom: 1px solid #f4f4f5;">E-mail :</td>
+                                    <td style="padding: 8px 12px; font-size: 14px; color: #18181b; border-bottom: 1px solid #f4f4f5;">
+                                        <a href="mailto:{{ messageContact.email }}" style="color: #09090b;">{{ messageContact.email }}</a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #71717a; border-bottom: 1px solid #f4f4f5;">Téléphone :</td>
+                                    <td style="padding: 8px 12px; font-size: 14px; color: #18181b; border-bottom: 1px solid #f4f4f5;">
+                                        {{ messageContact.telephone|default('Non renseigné') }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #71717a; border-bottom: 1px solid #f4f4f5;">Sujet :</td>
+                                    <td style="padding: 8px 12px; font-size: 14px; color: #18181b; font-weight: 600; border-bottom: 1px solid #f4f4f5;">
+                                        {{ messageContact.sujet|default('Non renseigné') }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 12px; font-size: 13px; font-weight: 700; color: #71717a; border-bottom: 1px solid #f4f4f5;">Date :</td>
+                                    <td style="padding: 8px 12px; font-size: 13px; color: #52525b; border-bottom: 1px solid #f4f4f5;">
+                                        {{ messageContact.dateEnvoi|date('d/m/Y à H:i') }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- MESSAGE CONTENT -->
+                            <div style="background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                                <p style="margin: 0 0 10px; font-size: 12px; font-weight: 700; color: #71717a; text-transform: uppercase;">
+                                    Message :
+                                </p>
+                                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #18181b; white-space: pre-wrap;">
+                                    {{ messageContact.message }}
+                                </p>
+                            </div>
+
+                            <!-- LIEN VERS DASHBOARD -->
+                            {% if dashboardUrl is defined and dashboardUrl %}
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{{ dashboardUrl }}" target="_blank" style="display: inline-block; background-color: #09090b; color: #ffffff; font-size: 14px; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 8px;">
+                                            Répondre depuis le dashboard
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <!-- FOOTER -->
+                    <tr>
+                        <td style="background-color: #f4f4f5; padding: 18px 40px; text-align: center; border-top: 1px solid #e4e4e7;">
+                            <p style="margin: 0; font-size: 11px; color: #71717a;">
+                                Notification générée automatiquement par le système CS AB AUTO.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

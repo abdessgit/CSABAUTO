@@ -1,0 +1,21 @@
+Bonjour {{ messageContact.nom }},
+
+L'équipe CS AB AUTO a bien pris connaissance de votre message et vous apporte la réponse suivante :
+
+{{ messageContact.reponse }}
+
+(Répondu par {{ messageContact.repondPar.prenom|default('') }} {{ messageContact.repondPar.nom|default('L\'équipe CS AB AUTO') }} le {{ messageContact.dateReponse|date('d/m/Y à H:i') }})
+
+---
+Rappel de votre demande du {{ messageContact.dateEnvoi|date('d/m/Y') }} :
+{% if messageContact.sujet %}
+Sujet : {{ messageContact.sujet }}
+{% endif %}
+"{{ messageContact.message }}"
+
+Vous pouvez répondre directement à cet e-mail ou nous joindre au 06 63 40 76 94.
+
+---
+CS AB AUTO — Garage & Véhicules d'occasion
+3 Bis Rue Albert Thomas, 62410 Meurchin
+Téléphone : 06 63 40 76 94

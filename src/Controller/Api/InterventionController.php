@@ -14,6 +14,7 @@ use App\Repository\InterventionRepository;
 use App\Repository\RendezVousRepository;
 use App\Repository\ServiceRepository;
 use App\Repository\VehiculeRepository;
+use App\Service\FactureNumberGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -34,6 +35,7 @@ class InterventionController extends AbstractApiController
         private RendezVousRepository $rendezVousRepo,
         private ServiceRepository $services,
         private Security $security,
+        private FactureNumberGenerator $factureNumberGenerator,
     ) {}
 
     #[Route('', methods: ['GET'])]
@@ -166,8 +168,75 @@ class InterventionController extends AbstractApiController
         $intervention->setStatut($s);
 
         if ($s === InterventionStatut::TERMINEE) {
-            $montantFormatted = number_format((float) $dto->montant, 2, '.', '');
-            $intervention->setCoutTotal($montantFormatted);
+            // IMMUABILITÉ : Si l'intervention possède déjà une facture, refus formel de toute modification
+            if ($intervention->getFacture() !== null) {
+                return new JsonResponse([
+                    'error' => sprintf(
+                        'L\'intervention #%d a déjà été validée et facturée (Facture N° %s). Une facture émise est un document légal immuable et ne peut pas être modifiée.',
+                        $intervention->getId(),
+                        $intervention->getFacture()->getNumeroFacture()
+                    )
+                ], 422);
+            }
+
+            $defaultDesc = $intervention->getDescription() ?: 'Intervention mécanique générale';
+            $lignes = $dto->getNormalizedLignes($defaultDesc);
+
+            $montantHT = 0.0;
+            $montantTVA = 0.0;
+            $tauxTvaStandard = 20.00;
+
+            foreach ($lignes as $l) {
+                $lineHT = (float) $l['montant'];
+                $lineTva = round($lineHT * ($tauxTvaStandard / 100), 2);
+                $montantHT += $lineHT;
+                $montantTVA += $lineTva;
+            }
+
+            $montantTTC = round($montantHT + $montantTVA, 2);
+
+            $montantHTFormatted = number_format($montantHT, 2, '.', '');
+            $montantTVAFormatted = number_format($montantTVA, 2, '.', '');
+            $montantTTCFormatted = number_format($montantTTC, 2, '.', '');
+
+            // L'intervention stocke le montant TTC réel pour le client
+            $intervention->setCoutTotal($montantTTCFormatted);
+
+            // Génération de la Facture avec numéro séquentiel immuable FAC-YYYY-NNNN
+            $dateEmission = new \DateTimeImmutable();
+            $datePrestation = $intervention->getDateIntervention() ?? $dateEmission;
+            $dateEcheance = $dateEmission->modify('+30 days');
+            $numeroFacture = $this->factureNumberGenerator->generateNextNumber((int) $dateEmission->format('Y'));
+
+            $facture = (new Facture())
+                ->setNumeroFacture($numeroFacture)
+                ->setDateEmission($dateEmission)
+                ->setDatePrestation($datePrestation)
+                ->setDateEcheance($dateEcheance)
+                ->setTauxTva(number_format($tauxTvaStandard, 2, '.', ''))
+                ->setMontantHT($montantHTFormatted)
+                ->setMontantTVA($montantTVAFormatted)
+                ->setMontantTTC($montantTTCFormatted)
+                ->setMontantTotal($montantTTCFormatted)
+                ->setStatut(FactureStatut::EN_ATTENTE)
+                ->setIntervention($intervention);
+
+            $this->em->persist($facture);
+
+            $ordre = 1;
+            foreach ($lignes as $l) {
+                $lineHT = (float) $l['montant'];
+                $ligne = (new LigneFacture())
+                    ->setFacture($facture)
+                    ->setDescription($l['designation'])
+                    ->setQuantite(1)
+                    ->setPrixUnitaire(number_format($lineHT, 2, '.', ''))
+                    ->setSousTotal(number_format($lineHT, 2, '.', ''))
+                    ->setTauxTva(number_format($tauxTvaStandard, 2, '.', ''))
+                    ->setOrdre($ordre++);
+                $this->em->persist($ligne);
+                $facture->addLignesFacture($ligne);
+            }
         } elseif ($dto->montant !== null && is_numeric($dto->montant) && (float) $dto->montant >= 0) {
             $montantFormatted = number_format((float) $dto->montant, 2, '.', '');
             $intervention->setCoutTotal($montantFormatted);
@@ -182,43 +251,78 @@ class InterventionController extends AbstractApiController
     public function genererFacture(Intervention $intervention): JsonResponse
     {
         if ($intervention->getFacture() !== null) {
-            return new JsonResponse(['error' => 'Une facture existe déjà pour cette intervention'], 422);
+            return new JsonResponse([
+                'error' => sprintf(
+                    'Une facture existe déjà pour cette intervention (N° %s)',
+                    $intervention->getFacture()->getNumeroFacture()
+                )
+            ], 422);
         }
 
+        $dateEmission = new \DateTimeImmutable();
+        $datePrestation = $intervention->getDateIntervention() ?? $dateEmission;
+        $dateEcheance = $dateEmission->modify('+30 days');
+        $numeroFacture = $this->factureNumberGenerator->generateNextNumber((int) $dateEmission->format('Y'));
+
         $facture = (new Facture())
-            ->setNumeroFacture('FACT-' . date('Ymd') . '-' . $intervention->getId())
-            ->setDateEmission(new \DateTimeImmutable())
+            ->setNumeroFacture($numeroFacture)
+            ->setDateEmission($dateEmission)
+            ->setDatePrestation($datePrestation)
+            ->setDateEcheance($dateEcheance)
+            ->setTauxTva('20.00')
             ->setStatut(FactureStatut::EN_ATTENTE)
             ->setIntervention($intervention);
 
-        $montantTotal = 0.0;
+        $montantHT = 0.0;
+        $montantTVA = 0.0;
+        $tauxTvaStandard = 20.00;
+
         if ($intervention->getInterventionServices()->count() > 0) {
+            $ordre = 1;
             foreach ($intervention->getInterventionServices() as $is) {
-                $sousTotal = $is->getQuantite() * (float) $is->getPrixApplique();
+                $sousTotalHT = $is->getQuantite() * (float) $is->getPrixApplique();
+                $lineTva = round($sousTotalHT * ($tauxTvaStandard / 100), 2);
+                $montantHT += $sousTotalHT;
+                $montantTVA += $lineTva;
+
                 $ligne = (new LigneFacture())
                     ->setFacture($facture)
                     ->setDescription($is->getService()->getNom())
                     ->setQuantite($is->getQuantite())
                     ->setPrixUnitaire($is->getPrixApplique())
-                    ->setSousTotal((string) $sousTotal);
+                    ->setSousTotal((string) $sousTotalHT)
+                    ->setTauxTva('20.00')
+                    ->setOrdre($ordre++);
 
                 $this->em->persist($ligne);
-                $montantTotal += $sousTotal;
             }
         } else {
-            $montantVal = (float) ($intervention->getCoutTotal() ?: '0.00');
+            $montantValHT = (float) ($intervention->getCoutTotal() ?: '0.00');
+            // Si coutTotal était déjà en TTC ou HT, on le prend comme HT de départ
+            $lineTva = round($montantValHT * ($tauxTvaStandard / 100), 2);
+            $montantHT = $montantValHT;
+            $montantTVA = $lineTva;
+
             $ligne = (new LigneFacture())
                 ->setFacture($facture)
                 ->setDescription($intervention->getDescription() ?: 'Intervention mécanique générale')
                 ->setQuantite(1)
-                ->setPrixUnitaire(number_format($montantVal, 2, '.', ''))
-                ->setSousTotal(number_format($montantVal, 2, '.', ''));
+                ->setPrixUnitaire(number_format($montantValHT, 2, '.', ''))
+                ->setSousTotal(number_format($montantValHT, 2, '.', ''))
+                ->setTauxTva('20.00')
+                ->setOrdre(1);
 
             $this->em->persist($ligne);
-            $montantTotal = $montantVal;
         }
 
-        $facture->setMontantTotal(number_format($montantTotal, 2, '.', ''));
+        $montantTTC = round($montantHT + $montantTVA, 2);
+
+        $facture->setMontantHT(number_format($montantHT, 2, '.', ''));
+        $facture->setMontantTVA(number_format($montantTVA, 2, '.', ''));
+        $facture->setMontantTTC(number_format($montantTTC, 2, '.', ''));
+        $facture->setMontantTotal(number_format($montantTTC, 2, '.', ''));
+
+        $intervention->setCoutTotal(number_format($montantTTC, 2, '.', ''));
 
         $this->em->persist($facture);
         $this->em->flush();

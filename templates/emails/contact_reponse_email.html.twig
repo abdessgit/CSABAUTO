@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réponse à votre message - CS AB AUTO</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5; padding: 40px 15px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);" cellspacing="0" cellpadding="0">
+                    
+                    <!-- HEADER -->
+                    <tr>
+                        <td style="background-color: #09090b; padding: 30px 40px; text-align: center;">
+                            <div style="display: inline-block;">
+                                <span style="background-color: #f5c400; color: #000000; font-size: 22px; font-weight: 900; padding: 6px 12px; border-radius: 4px; letter-spacing: 1px; display: inline-block;">CSAB</span>
+                                <strong style="color: #ffffff; font-size: 22px; font-weight: 900; letter-spacing: 2px; margin-left: 6px; display: inline-block;">AUTO</strong>
+                            </div>
+                            <p style="margin: 8px 0 0; color: #a1a1aa; font-size: 11px; text-transform: uppercase; letter-spacing: 2px;">Garage automobile &amp; Vente de véhicules</p>
+                        </td>
+                    </tr>
+
+                    <!-- CORPS -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <h1 style="margin: 0 0 20px; font-size: 22px; font-weight: 800; color: #09090b;">
+                                Réponse à votre message
+                            </h1>
+
+                            <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #3f3f46;">
+                                Bonjour <strong>{{ messageContact.nom }}</strong>,
+                            </p>
+
+                            <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #3f3f46;">
+                                L'équipe CS AB AUTO a bien pris connaissance de votre message et vous apporte la réponse suivante :
+                            </p>
+
+                            <!-- RÉPONSE DU GARAGE -->
+                            <div style="background-color: #f8fafc; border-left: 4px solid #f5c400; border-radius: 4px; padding: 20px; margin-bottom: 30px;">
+                                <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #0f172a; white-space: pre-wrap;">
+                                    {{ messageContact.reponse }}
+                                </p>
+                                <p style="margin: 16px 0 0; font-size: 12px; color: #64748b;">
+                                    Répondu par <strong>{{ messageContact.repondPar.prenom|default('') }} {{ messageContact.repondPar.nom|default('L\'équipe CS AB AUTO') }}</strong> le {{ messageContact.dateReponse|date('d/m/Y à H:i') }}
+                                </p>
+                            </div>
+
+                            <!-- RAPPEL DU MESSAGE D'ORIGINE -->
+                            <div style="background-color: #fafafa; border: 1px solid #e4e4e7; border-radius: 8px; padding: 18px; margin-bottom: 25px;">
+                                <p style="margin: 0 0 8px; font-size: 12px; font-weight: 700; color: #71717a; text-transform: uppercase;">
+                                    Rappel de votre demande du {{ messageContact.dateEnvoi|date('d/m/Y') }} :
+                                </p>
+                                {% if messageContact.sujet %}
+                                <p style="margin: 0 0 8px; font-size: 13px; color: #18181b;">
+                                    <strong>Sujet :</strong> {{ messageContact.sujet }}
+                                </p>
+                                {% endif %}
+                                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #52525b; white-space: pre-wrap; font-style: italic;">
+                                    "{{ messageContact.message }}"
+                                </p>
+                            </div>
+
+                            <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #71717a;">
+                                Vous pouvez répondre directement à cet e-mail ou nous contacter par téléphone au <strong>06 63 40 76 94</strong>.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- FOOTER -->
+                    <tr>
+                        <td style="background-color: #f4f4f5; padding: 25px 40px; text-align: center; border-top: 1px solid #e4e4e7;">
+                            <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #27272a;">
+                                CS AB AUTO — Garage &amp; Véhicules d'occasion
+                            </p>
+                            <p style="margin: 0; font-size: 11px; color: #a1a1aa;">
+                                3 Bis Rue Albert Thomas, 62410 Meurchin • Téléphone : 06 63 40 76 94
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

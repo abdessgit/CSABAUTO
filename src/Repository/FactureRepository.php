@@ -15,4 +15,18 @@ class FactureRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Facture::class);
     }
+
+    public function findLatestNumeroForYear(string $prefix): ?string
+    {
+        $result = $this->createQueryBuilder('f')
+            ->select('f.numeroFacture')
+            ->where('f.numeroFacture LIKE :prefix')
+            ->setParameter('prefix', $prefix . '%')
+            ->orderBy('f.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $result['numeroFacture'] ?? null;
+    }
 }

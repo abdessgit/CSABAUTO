@@ -1,0 +1,17 @@
+Bonjour {{ messageContact.nom }},
+
+Nous vous confirmons la bonne réception de votre demande adressée à l'équipe CS AB AUTO.
+Notre équipe traite votre demande dans les plus brefs délais et vous apportera une réponse par e-mail ou par téléphone.
+
+Récapitulatif de votre message :
+{% if messageContact.sujet %}
+Sujet : {{ messageContact.sujet }}
+{% endif %}
+"{{ messageContact.message }}"
+
+En cas d'urgence atelier ou dépannage, contactez-nous directement au 06 63 40 76 94.
+
+---
+CS AB AUTO — Garage & Véhicules d'occasion
+3 Bis Rue Albert Thomas, 62410 Meurchin
+Téléphone : 06 63 40 76 94

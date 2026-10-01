@@ -12,6 +12,7 @@ parameters:
     company.phone: '%env(COMPANY_PHONE)%'
     company.email: '%env(COMPANY_EMAIL)%'
     company.siret: '%env(COMPANY_SIRET)%'
+    company.tva_intra: '%env(default::COMPANY_TVA_INTRA)%'
 
 services:
     # default configuration for services in *this* file
@@ -34,3 +35,4 @@ services:
             $companyPhone: '%company.phone%'
             $companyEmail: '%company.email%'
             $companySiret: '%company.siret%'
+            $companyTvaIntra: '%company.tva_intra%'

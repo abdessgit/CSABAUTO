@@ -24,7 +24,7 @@ private ?string $url = null;
         #[Groups(['photo:read'])]
 private ?int $ordreAffichage = null;
 
-    #[ORM\ManyToOne(inversedBy: 'photos')]
+    #[ORM\ManyToOne(inversedBy: 'photoEntities')]
     #[ORM\JoinColumn(nullable: false)]
         #[Groups(['photo:read'])]
 private ?Annonce $annonce = null;

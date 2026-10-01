@@ -24,4 +24,12 @@ framework:
             policy: 'sliding_window'
             limit: 5
             interval: '1 hour'
+        contact_attempts:
+            policy: 'sliding_window'
+            limit: 3
+            interval: '1 hour'
+        contact_reply_attempts:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '15 minutes'
 

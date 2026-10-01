@@ -1,0 +1,14 @@
+Nouveau message reçu depuis le formulaire de contact
+
+Nom : {{ messageContact.nom }}
+E-mail : {{ messageContact.email }}
+Téléphone : {{ messageContact.telephone|default('Non renseigné') }}
+Sujet : {{ messageContact.sujet|default('Non renseigné') }}
+Date : {{ messageContact.dateEnvoi|date('d/m/Y à H:i') }}
+
+Message :
+{{ messageContact.message }}
+
+{% if dashboardUrl is defined and dashboardUrl %}
+Consulter et répondre dans le dashboard : {{ dashboardUrl }}
+{% endif %}
