@@ -9,6 +9,7 @@ use App\Repository\AnnonceRepository;
 use App\Repository\VehiculeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,7 +26,9 @@ class AnnonceController extends AbstractApiController
         private SerializerInterface $serializer,
         private ValidatorInterface $validator,
         private VehiculeRepository $vehicules,
-        private Security $security
+        private Security $security,
+        #[Autowire('%kernel.project_dir%')]
+        private string $projectDir
     ) {}
 
     // ==========================================
@@ -198,9 +201,15 @@ class AnnonceController extends AbstractApiController
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $maxSize = 5 * 1024 * 1024; // 5 Mo
 
-        $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/annonces';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        $uploadDir = $this->projectDir . '/public/uploads/annonces';
+        try {
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+        } catch (\Throwable $e) {
+            return new JsonResponse([
+                'error' => 'Impossible de créer le dossier de destination pour les photos : ' . $e->getMessage(),
+            ], 500);
         }
 
         $savedUrls = [];
@@ -221,10 +230,15 @@ class AnnonceController extends AbstractApiController
                 ], 422);
             }
 
-            $filename = bin2hex(random_bytes(16)) . '.' . $ext;
-            $file->move($uploadDir, $filename);
-
-            $savedUrls[] = '/uploads/annonces/' . $filename;
+            try {
+                $filename = bin2hex(random_bytes(16)) . '.' . $ext;
+                $file->move($uploadDir, $filename);
+                $savedUrls[] = '/uploads/annonces/' . $filename;
+            } catch (\Throwable $e) {
+                return new JsonResponse([
+                    'error' => sprintf('Erreur lors de l\'enregistrement de l\'image "%s" : %s', $file->getClientOriginalName(), $e->getMessage()),
+                ], 500);
+            }
         }
 
         return new JsonResponse([
